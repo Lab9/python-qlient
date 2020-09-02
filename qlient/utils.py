@@ -3,8 +3,8 @@ from typing import Union
 
 def get_version() -> str:
     """
-    Get the version from graphy
-    :return: the version of graphy
+    Get the version from qlient
+    :return: the version of qlient
     """
     from qlient import __version__
     return __version__

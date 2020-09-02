@@ -1,7 +1,6 @@
 from typing import Dict, Union
 
 import requests
-from promise import Promise
 from requests import Session, Response
 
 from qlient.settings import Settings
@@ -24,7 +23,7 @@ class Transporter:
         """
         self.operation_timeout = operation_timeout
         self.session: Session = session or requests.sessions.session()
-        self.session.headers["User-Agent"] = f"Graphy/{get_version()} (https://pypi.org/project/python-graphy/)"
+        self.session.headers["User-Agent"] = f"Qlient/{get_version()} (https://pypi.org/project/python-qlient/)"
 
     def post(
             self,
@@ -61,30 +60,6 @@ class Transporter:
                 return response_json[settings.default_response_key][operation_name]
             except KeyError:
                 raise KeyError("Key not found in response. Try to set Settings(return_requests_response=True)")
-
-
-class PromiseTransporter(Transporter):
-    """
-    A promise transporter returns Promises instead of the Response.
-    Use this when you do not want to wait for the request to finish and continue to run with your code.
-    """
-
-    def post(
-            self,
-            endpoint: str,
-            query: str,
-            variables: Dict,
-            operation_name: str,
-            settings: Settings
-    ) -> Promise[Union[Response, Dict]]:
-        """
-        This method wraps the parents post method in a Promise.
-        """
-        return Promise(
-            lambda resolve, reject: resolve(super(PromiseTransporter, self).post(
-                endpoint, query, variables, operation_name, settings
-            ))
-        )
 
 
 class AsyncTransporter(Transporter):

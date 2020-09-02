@@ -1,4 +1,4 @@
-# Graphy: Python GraphQL Client
+# Qlient: Python GraphQL Client
 
 A fast and modern graphql client library designed with simplicity in mind.
 
@@ -8,14 +8,14 @@ A fast and modern graphql client library designed with simplicity in mind.
 [![Language][language-image]][language-url]
 
 
-[pypi-image]: https://img.shields.io/pypi/v/python-graphy.svg?style=flat
-[pypi-url]: https://pypi.python.org/pypi/python-graphy
+[pypi-image]: https://img.shields.io/pypi/v/python-qlient.svg?style=flat
+[pypi-url]: https://pypi.python.org/pypi/python-qlient
 
-[github-license-image]: https://img.shields.io/github/license/Lab9/python-graphy.svg
-[github-license-url]: https://github.com/Lab9/python-graphy/blob/master/LICENSE
+[github-license-image]: https://img.shields.io/github/license/Lab9/python-qlient.svg
+[github-license-url]: https://github.com/Lab9/python-qlient/blob/master/LICENSE
 
-[pypi-wheel-image]: https://img.shields.io/pypi/wheel/python-graphy.svg
-[pypi-wheel-url]: https://pypi.python.org/pypi/python-graphy
+[pypi-wheel-image]: https://img.shields.io/pypi/wheel/python-qlient.svg
+[pypi-wheel-url]: https://pypi.python.org/pypi/python-qlient
 
 [language-image]: https://img.shields.io/badge/lang-python-green
 [language-url]: https://www.python.org/
@@ -27,17 +27,17 @@ NOTE: THIS PACKAGE IS STILL UNDER DEVELOPMENT.
 ### Installing
 
 ```shell script
-pip install python-graphy
+pip install python-qlient
 ```
 
 ### Usage
 This example shows a simple query
 ```python
-from graphy import Client
+from qlient import Client
 
-client = Client("https://graphql-pokemon.now.sh/")
+client = Client("https://countries.trevorblades.com/")
 
-response = client.query.pokemon(select=["id", "name"], where={"name": "Pikachu"})
+response = client.query.countries(select=["name"])
 ```
 
 ## Documentation
@@ -46,7 +46,6 @@ The Documentation covers the following points:
 * [Mutation](#mutation)
 * [Subscription](#subscription)
 * [Transporter](#transporter)
-    * [PromiseTransporter](#promisetransporter)
     * [AsyncTransporter](#asynctransporter)
 * [Settings](#settings)
     * [max_recursion_depth](#max_recursion_depth)
@@ -60,27 +59,24 @@ The Documentation covers the following points:
 ### Query
 Queries are the A and O of graphql and are as easy as:
 ```python
-from graphy import Client
+from qlient import Client
 
-client = Client("https://graphql-pokemon.now.sh/")
+client = Client("https://countries.trevorblades.com/")
 
-response = client.query.pokemons(select=["id", "name"], where={"first": 10})
+response = client.query.country(select=["name", "capital"], where={"code": "CH"})
 ```
 Which will make a request to the server and return the id and name of the first 10 pokemons found in the pokedex.
 
 But what if you want to make a more complex query with fields within fields?
 Don't need to worry, we got you covered:
 ```python
-from graphy import Client, fields
+from qlient import Client, fields
 
-client = Client("https://graphql-pokemon.now.sh/")
+client = Client("https://countries.trevorblades.com/")
 
-response = client.query.pokemons(
-    select=fields("id", "name", evolutions=fields("id", "name")), 
-    where={"first": 10}
-)
+response = client.query.country(select=fields("name", "capital", languages=fields("name")), where={"code": "CH"})
 ```
-Using the fields method from `graphy` you can simply use `*args` and `**kwargs` for making deeper selections.
+Using the fields method from `qlient` you can simply use `*args` and `**kwargs` for making deeper selections.
 By the way, you could stack this like forever.
 
 Last but not least, what if you don't know the fields you could select?
@@ -90,24 +86,22 @@ I have set the max depth to **2** (Can be changed via [Settings](#settings)). Th
 but you won't get them all. If you want all, use the `fields` function defined above.
 
 ```python
-from graphy import Client
+from qlient import Client
 
-client = Client("https://graphql-pokemon.now.sh/")
+client = Client("https://countries.trevorblades.com/")
 
-response = client.query.pokemons(where={"first": 10})
-
-# this gives you a good amount of data back.
+response = client.query.country(where={"code": "CH"})
 ```
 
 ### Mutation
 I haven't found a real world example for making mutations without being authenticated,
 so here's a hypothetical one.
 ```python
-from graphy import Client
+from qlient import Client
 
 client = Client("https://some-host.com/authentication")
 
-response = client.mutation.register(data={"email": "foo@bar.com", "password": "987654321"})
+response = client.mutation.register(data={"email": "foo@bar.com", "password": "987654321"}, select=["userId"])
 ```
 
 ### Subscription
@@ -119,7 +113,7 @@ So have a look at their [documentation](https://pypi.org/project/websockets/) fo
 Here is a basic example
 ```python
 import asyncio
-from graphy import Client
+from qlient import Client
 
 client = Client("http://your-host:8080")  # remains the same
 
@@ -137,7 +131,7 @@ Same goes for secured connections: `https` becomes `wss`.
 But it may be, that you have different endpoints. Therefor you can specify the websocket endpoint
 manually.
 ```python
-from graphy import Client
+from qlient import Client
 
 client = Client("http://your-host:8080", ws_endpoint="wss://your-other-host:3000")
 ```
@@ -154,7 +148,7 @@ Therefor, you can pass it directly to the transporter.
 ```python
 import requests
 
-from graphy import Client, Transporter
+from qlient import Client, Transporter
 
 my_session = requests.sessions.session()
 
@@ -163,32 +157,18 @@ my_session.headers["Authorization"] = "Bearer some-api-token"
 client = Client("https://foo.bar/", transporter=Transporter(session=my_session))
 ```
 
-#### PromiseTransporter
-
-So why not create asynchronous transporters as well?
-Making a request with the promise transporter returns a `Promise[Response]` with the response as a value.
-Have a look at their [documentation](https://pypi.org/project/promise/).
-
-```python
-from graphy import Client, PromiseTransporter
-
-client = Client("https://graphql-pokemon.now.sh/", transporter=PromiseTransporter())
-
-client.query.pokemons(where={"first": 10}).done(lambda j: print(j), None)  # None represents the did_reject callback.
-```
-
 #### AsyncTransporter
 
 And an AsyncTransporter:
 ```python
 import asyncio
 
-from graphy import Client, AsyncTransporter
+from qlient import Client, AsyncTransporter
 
-client = Client("https://graphql-pokemon.now.sh/", transporter=AsyncTransporter())
+client = Client("https://countries.trevorblades.com/", transporter=AsyncTransporter())
 
 async def request_data():
-    return await client.query.pokemons(where={"first": 10})
+    return await client.query.country(select=["name", "capital"], where={"code": "CH"})
 
 asyncio.run(request_data())
 ```
@@ -201,75 +181,75 @@ When no settings are passed by to a client, the default values will be used inst
 The max_recursion_depth can be used for changing the max depth for deeper automatic selection lookup.
 Default is 2.
 ```python
-from graphy import Client, Settings
+from qlient import Client, Settings
 
 settings = Settings(max_recursion_depth=5)  # Due to performance reasons I do not recommend to go any higher than that.
 
-client = Client("https://graphql-pokemon.now.sh/", settings=settings)
+client = Client("https://countries.trevorblades.com/", settings=settings)
 ```
 
 #### base_response_key
 The base_response_key can be changed for setting the base key that is being used to get the data from the server.
 Default is "data".
 ```python
-from graphy import Client, Settings
+from qlient import Client, Settings
 
 settings = Settings(base_response_key="my_custom_data_key")
 
-client = Client("https://graphql-pokemon.now.sh/", settings=settings)
+client = Client("https://countries.trevorblades.com/", settings=settings)
 ```
 
 #### base_payload_key
 The base_payload_key can be changed for setting the base key that is being used to read the data from the websocket response.
 Default is "payload".
 ```python
-from graphy import Client, Settings
+from qlient import Client, Settings
 
 settings = Settings(base_payload_key="my_custom_payload_key")
 
-client = Client("https://graphql-pokemon.now.sh/", settings=settings)
+client = Client("https://countries.trevorblades.com/", settings=settings)
 ```
 
 #### return_requests_response
 The return_requests_response can be set to True if you want the whole request back instead of just the json.
 Default is False.
 ```python
-from graphy import Client, Settings
+from qlient import Client, Settings
 
 settings = Settings(return_requests_response=True)
 
-client = Client("https://graphql-pokemon.now.sh/", settings=settings)
+client = Client("https://countries.trevorblades.com/", settings=settings)
 ```
 
 #### disable_selection_lookup
 The disable_selection_lookup can be set to True if you want to disable the automatic selection lookup.
 Default is False.
 ```python
-from graphy import Client, Settings
+from qlient import Client, Settings
 
 settings = Settings(disable_selection_lookup=True)
 
-client = Client("https://graphql-pokemon.now.sh/", settings=settings)
+client = Client("https://countries.trevorblades.com/", settings=settings)
 ```
 
 #### return_full_subscription_body
 The return_full_subscription_body can be set to True if you want to get the full websocket response instead of only
 the data.
 ```python
-from graphy import Client, Settings
+from qlient import Client, Settings
 
 settings = Settings(return_full_subscription_body=True)
 
-client = Client("https://graphql-pokemon.now.sh/", settings=settings)
+client = Client("https://countries.trevorblades.com/", settings=settings)
 ```
 
 ### CLI
-Graphy also provides a CLI for inspecting a schema.
+Qlient also provides a CLI for inspecting a schema.
 ```shell script
-graphy --inspect "https://graphql-pokemon.now.sh/"
+qlient --inspect "https://countries.trevorblades.com/"
 
 # or short:
-# graphy -i "https://graphql-pokemon.now.sh/"
+# qlient -i "https://countries.trevorblades.com/"
 ```
 
 ## Authors

@@ -27,14 +27,13 @@ setup(
         "Framework :: AsyncIO",
         "Natural Language :: English",
     ],
-    keywords="python graphql client api async promise graph requests query mutation subscription",
+    keywords="python graphql client api async asyncio graph requests query mutation subscription",
     packages=[
         "qlient"
     ],
     include_package_data=True,
     install_requires=[
         "requests==2.*",
-        "promise==2.*",
         "websockets==8.1"
     ],
     entry_points={

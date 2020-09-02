@@ -1,6 +1,6 @@
 class Settings:
     """
-    A Settings object holds necessary settings for the graphy library to work.
+    A Settings object holds necessary settings for the library to work.
     Each setting can be changed but do this with caution.
     """
 

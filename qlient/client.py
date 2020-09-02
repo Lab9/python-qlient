@@ -7,7 +7,7 @@ from qlient.utils import adapt_websocket_endpoint
 
 class Client:
     """
-    The graphy client is the core of this package.
+    The client is the core of this package.
 
     It is used for requests and holds important variables like endpoint, settings and the schema.
     """

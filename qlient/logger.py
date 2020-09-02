@@ -1,3 +1,3 @@
 from logging import getLogger
 
-logger = getLogger("graphy")  # the package logger
+logger = getLogger("qlient")  # the package logger
