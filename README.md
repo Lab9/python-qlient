@@ -20,8 +20,6 @@ A fast and modern graphql client library designed with simplicity in mind.
 [language-image]: https://img.shields.io/badge/lang-python-green
 [language-url]: https://www.python.org/
 
-NOTE: THIS PACKAGE IS STILL UNDER DEVELOPMENT.
-
 ## Getting Started
 
 ### Installing
