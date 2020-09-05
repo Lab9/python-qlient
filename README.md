@@ -63,7 +63,7 @@ client = Client("https://countries.trevorblades.com/")
 
 response = client.query.country(select=["name", "capital"], where={"code": "CH"})
 ```
-Which will make a request to the server and return the id and name of the first 10 pokemons found in the pokedex.
+Which will make a request to the server and return the name and capital of the country switzerland.
 
 But what if you want to make a more complex query with fields within fields?
 Don't need to worry, we got you covered:
