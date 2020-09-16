@@ -1,7 +1,8 @@
 import itertools
 import json
 import uuid
-from typing import Dict, Iterable, Tuple, Callable
+from abc import abstractmethod, ABC
+from typing import Dict, Iterable, Tuple, Callable, Optional
 
 from websockets import connect
 
@@ -12,7 +13,7 @@ from qlient.logger import logger
 from qlient.schema import Operation
 
 
-class OperationProxy:
+class OperationProxy(ABC):
     """
     The operation proxy class provides callable instances where the query,
     variables and an optional operation name can be passed by.
@@ -28,13 +29,70 @@ class OperationProxy:
         """
         self.client = client
         self.operation = operation
+        self.fields: Optional[Tuple[SelectedField]] = None
+        self.variables = {}
+        self._query_string = ""
+        self.data_has_changed = False
+
+    def set_variables(self, variables: Optional[Dict]) -> "OperationProxy":
+        """
+        Set the variables for a request.
+
+        :param variables: holds optional variables stored as a dict.
+        :return: self
+        """
+        if variables is None:
+            self.variables = {}
+        else:
+            self.variables = variables
+        self.data_has_changed = True
+        return self
+
+    def select(self, fields: Optional[Tuple[SelectedField]]) -> "OperationProxy":
+        """
+        Specify a range of selected fields for example: ...select(["id", "name"])
+
+        :param fields: holds an optional tuple, list or string with selected fields.
+        :return: self
+        """
+        if fields is None or isinstance(fields, tuple):
+            self.fields = fields
+        elif isinstance(fields, list):
+            self.fields = tuple(fields)
+        elif isinstance(fields, str):
+            self.fields = (fields,)
+        else:
+            raise ValueError("Unrecognised type")
+        self.data_has_changed = True
+        return self
+
+    @abstractmethod
+    def build_query_string(self) -> str:
+        """
+        Abstract method for building the query string.
+        This method must be overridden for each subclass.
+        """
+        pass
+
+    @property
+    def query_string(self) -> str:
+        """
+        Property for lazy initializing the query string because if enabled
+        the recursive field selection lookup is quite heavy.
+
+        :return: the query string.
+        """
+        if self._query_string == "" or self.data_has_changed:
+            self._query_string = self.build_query_string()
+            self.data_has_changed = False
+        return self._query_string
 
     @property
     def name(self) -> str:
         """ Shortcut for the operations name """
         return self.operation.name
 
-    def __call__(self, query: str, variables: Dict = None, *args, **kwargs):
+    def __call__(self, *args, **kwargs):
         """
         The call makes the actual request to the endpoint.
         The result depends on the settings and transport in use.
@@ -46,11 +104,10 @@ class OperationProxy:
         :param kwargs: holds additional key word arguments
         :return: the result depending on settings and transport in use.
         """
-        variables = variables or {}
         return self.client.transporter.post(
             self.client.endpoint,
-            query,
-            variables,
+            self.query_string,
+            self.variables,
             self.name,
             self.operation.settings
         )
@@ -110,6 +167,23 @@ class QueryOperationProxy(OperationProxy):
     I'm open for any suggestions and improvements.
     """
 
+    def build_query_string(self) -> str:
+        if self.fields is None and not self.operation.settings.disable_selection_lookup:
+            selection = self.operation.get_return_fields(self.client.schema.types)
+            self.select(selection)
+
+        query_builder = GraphQLBuilder()
+
+        if self.variables is not None:
+            variables = helpers.map_variables_to_types(self.variables, self.operation)
+            query_builder = query_builder.operation("query", name=self.name, params=variables)
+            query_builder = query_builder.query(self.name, params={key: f"${key}" for key in self.variables.keys()})
+        else:
+            query_builder = query_builder.operation("query").query(self.name)
+
+        query_builder = query_builder.fields(self.fields)
+        return query_builder.generate()
+
     def __call__(self, select: Tuple[SelectedField] = None, where: Dict = None, *args, **kwargs):
         """
         This method is used to build the query request.
@@ -128,21 +202,9 @@ class QueryOperationProxy(OperationProxy):
         :param kwargs: holds additional key word arguments
         :return: the result from the transporter
         """
-        if select is None and not self.operation.settings.disable_selection_lookup:
-            select = self.operation.get_return_fields(self.client.schema.types)
-
-        query_builder = GraphQLBuilder()
-
-        if where is not None:
-            variables = helpers.map_variables_to_types(where, self.operation)
-            query_builder = query_builder.operation("query", name=self.name, params=variables)
-            query_builder = query_builder.query(self.name, params={key: f"${key}" for key in where.keys()})
-        else:
-            query_builder = query_builder.operation("query").query(self.name)
-
-        query_builder = query_builder.fields(select)
-        query_string = query_builder.generate()
-        return super(QueryOperationProxy, self).__call__(query=query_string, variables=where, *args, **kwargs)
+        self.select(select)
+        self.set_variables(where)
+        return super(QueryOperationProxy, self).__call__(*args, **kwargs)
 
 
 class QueryServiceProxy(ServiceProxy):
@@ -165,6 +227,19 @@ class MutationOperationProxy(OperationProxy):
     I'm open for any suggestions and improvements.
     """
 
+    def build_query_string(self) -> str:
+        if self.fields is None and not self.operation.settings.disable_selection_lookup:
+            selection = self.operation.get_return_fields(self.client.schema.types)
+            self.select(selection)
+
+        query_builder = GraphQLBuilder()
+        variables = helpers.map_variables_to_types(self.variables, self.operation)
+        query_builder = query_builder.operation("mutation", name=self.name, params=variables)
+        query_builder = query_builder.query(self.name, params={key: f"${key}" for key in self.variables.keys()})
+
+        query_builder = query_builder.fields(self.fields)
+        return query_builder.generate()
+
     def __call__(self, select: Tuple[SelectedField] = None, data: Dict = None, *args, **kwargs):
         """
         This method is used to build the mutation request.
@@ -184,18 +259,9 @@ class MutationOperationProxy(OperationProxy):
         """
         if data is None:
             raise ValueError("No Data specified")
-
-        if select is None and not self.operation.settings.disable_selection_lookup:
-            select = self.operation.get_return_fields(self.client.schema.types)
-
-        query_builder = GraphQLBuilder()
-        variables = helpers.map_variables_to_types(data, self.operation)
-        query_builder = query_builder.operation("mutation", name=self.name, params=variables)
-        query_builder = query_builder.query(self.name, params={key: f"${key}" for key in data.keys()})
-
-        query_builder = query_builder.fields(select)
-        query_string = query_builder.generate()
-        return super(MutationOperationProxy, self).__call__(query=query_string, variables=data, *args, **kwargs)
+        self.select(select)
+        self.set_variables(data)
+        return super(MutationOperationProxy, self).__call__(*args, **kwargs)
 
 
 class MutationServiceProxy(ServiceProxy):
@@ -217,6 +283,18 @@ class SubscriptionOperationProxy(OperationProxy):
     The call method was slightly changed for better readability which makes it easier to use as well.
     I'm open for any suggestions and improvements.
     """
+
+    def build_query_string(self) -> str:
+        if self.fields is None and not self.operation.settings.disable_selection_lookup:
+            selection = self.operation.get_return_fields(self.client.schema.types)
+            self.select(selection)
+
+        subscription_builder = GraphQLBuilder()
+
+        subscription_builder = subscription_builder.operation("subscription").query(self.name)
+
+        subscription_builder = subscription_builder.fields(self.fields)
+        return subscription_builder.generate()
 
     def __init__(self, client, operation):
         super(SubscriptionOperationProxy, self).__init__(client, operation)
@@ -244,25 +322,8 @@ class SubscriptionOperationProxy(OperationProxy):
         if self.client.ws_endpoint is None:
             raise ValueError("ws_endpoint is None. Please set the value manually in the client.")
 
-        if select is None and not self.operation.settings.disable_selection_lookup:
-            select = self.operation.get_return_fields(self.client.schema.types)
-
-        subscription_builder = GraphQLBuilder()
-
-        subscription_builder = subscription_builder.operation("subscription").query(self.name)
-
-        subscription_builder = subscription_builder.fields(select)
-        query_string = subscription_builder.generate()
-
-        connection_init_message = json.dumps({
-            "type": "connection_init",
-            self.client.settings.default_payload_key: {}
-        })
-
-        request_body = {
-            "query": query_string,
-            "variables": None
-        }
+        connection_init_message = json.dumps({"type": "connection_init", self.client.settings.default_payload_key: {}})
+        request_body = {"query": self.query_string, "variables": None}
 
         request_message = json.dumps({
             "type": "start",
