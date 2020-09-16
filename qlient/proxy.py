@@ -92,14 +92,11 @@ class OperationProxy(ABC):
         """ Shortcut for the operations name """
         return self.operation.name
 
-    def __call__(self, *args, **kwargs):
+    def exec(self, *args, **kwargs):
         """
         The call makes the actual request to the endpoint.
         The result depends on the settings and transport in use.
 
-        :param query: holds the query string
-        :param variables: holds a dictionary of variables that will be passed by as well
-        :param operation_name: holds an optional operation name
         :param args: holds additional arguments
         :param kwargs: holds additional key word arguments
         :return: the result depending on settings and transport in use.
@@ -111,6 +108,17 @@ class OperationProxy(ABC):
             self.name,
             self.operation.settings
         )
+
+    def __call__(self, *args, **kwargs):
+        """
+        Directly calling the instance will invoke the .exec(*args, **kwargs) method.
+        See OperationProxy.exec(*args, **kwargs) for further information.
+
+        :param args: holds additional arguments
+        :param kwargs: holds additional key word arguments
+        :return: the result depending on settings and transport in use.
+        """
+        return self.exec(*args, **kwargs)
 
 
 class ServiceProxy:
@@ -183,6 +191,12 @@ class QueryOperationProxy(OperationProxy):
 
         query_builder = query_builder.fields(self.fields)
         return query_builder.generate()
+
+    def where(self, variables: Dict) -> "QueryOperationProxy":
+        """
+        Wrapper for set variables method of OperationProxy.
+        """
+        return self.set_variables(variables)
 
     def __call__(self, select: Tuple[SelectedField] = None, where: Dict = None, *args, **kwargs):
         """
@@ -259,6 +273,7 @@ class MutationOperationProxy(OperationProxy):
         """
         if data is None:
             raise ValueError("No Data specified")
+
         self.select(select)
         self.set_variables(data)
         return super(MutationOperationProxy, self).__call__(*args, **kwargs)
@@ -318,6 +333,7 @@ class SubscriptionOperationProxy(OperationProxy):
         :param args: holds additional arguments
         :param kwargs: holds additional keyword arguments.
         """
+        self.select(select)
 
         if self.client.ws_endpoint is None:
             raise ValueError("ws_endpoint is None. Please set the value manually in the client.")

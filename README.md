@@ -35,7 +35,14 @@ from qlient import Client
 
 client = Client("https://countries.trevorblades.com/")
 
-response = client.query.countries(select=["name"])
+response = client.query.countries(select=["name", "capital"], where={"filter": {"code": {"eq": "CH"}}})
+
+# which is equal to
+response = client.query.countries.select(["name", "capital"]).where({"filter": {"code": {"eq": "CH"}}}).exec()
+
+# The 'where' method is only available on queries and named like this just for synthetic sugar.
+# for mutations it's 'set_variables'. 
+# both methods do the same.
 ```
 
 ## Documentation
@@ -61,7 +68,7 @@ from qlient import Client
 
 client = Client("https://countries.trevorblades.com/")
 
-response = client.query.country(select=["name", "capital"], where={"code": "CH"})
+response = client.query.country(select=["name", "capital"], where={"filter": {"code": {"eq": "CH"}}})
 ```
 Which will make a request to the server and return the name and capital of the country switzerland.
 
@@ -72,7 +79,10 @@ from qlient import Client, fields
 
 client = Client("https://countries.trevorblades.com/")
 
-response = client.query.country(select=fields("name", "capital", languages=fields("name")), where={"code": "CH"})
+response = client.query.country(
+    select=fields("name", "capital", languages=fields("name")),  # languages is an object that needs a subselection
+    where={"filter": {"code": {"eq": "CH"}}}
+)
 ```
 Using the fields method from `qlient` you can simply use `*args` and `**kwargs` for making deeper selections.
 By the way, you could stack this like forever.
@@ -88,7 +98,7 @@ from qlient import Client
 
 client = Client("https://countries.trevorblades.com/")
 
-response = client.query.country(where={"code": "CH"})
+response = client.query.country(where={"filter": {"code": {"eq": "CH"}}})
 ```
 
 ### Mutation
@@ -120,6 +130,32 @@ def on_event(data: dict):
     print(data)
 
 asyncio.run(client.subscription.my_subscription(handle=on_event))  # the asyncio.run() function is important!
+```
+
+### Debugging
+When you need to see the to be executed query, you simply do as following:
+```python
+from qlient import Client
+
+client = Client("https://countries.trevorblades.com/")
+
+print(client.query.countries.query_string)
+
+# should print something like:
+# query countries { countries { code name native phone capital currency emoji emojiU continent { code name } languages { code name native rtl } states { code name } } }
+```
+
+And when you need to change the selection:
+```python
+print(client.query.countries.select(["code", "name"]).query_string)
+# which prints: query countries { countries { code name } }
+```
+
+Or with variables:
+```python
+print(client.query.countries.select(["code", "name"]).set_variables({"filter": {"code": {"eq": "CH"}}}).query_string)
+# which prints: query countries ($filter: CountryFilterInput) { countries (filter: $filter) { code name } }
+# the variables are not visible in the query but rather will be send as variables dict to the server.
 ```
 
 #### Different Websocket endpoint
