@@ -123,13 +123,25 @@ Here is a basic example
 import asyncio
 from qlient import Client
 
-client = Client("http://your-host:8080")  # remains the same
+client = Client("http://your-host:8080")
 
 def on_event(data: dict):
     # ... do something with the data
     print(data)
 
 asyncio.run(client.subscription.my_subscription(handle=on_event))  # the asyncio.run() function is important!
+```
+
+#### Different Websocket endpoint
+If no websocket endpoint was specified, it gets adapted based on the given request host.
+for example `http://localhost:3000` becomes `ws://localhost:3000`.
+Same goes for secured connections: `https` becomes `wss`.
+But it may be, that you have different endpoints. Therefor you can specify the websocket endpoint
+manually.
+```python
+from qlient import Client
+
+client = Client("http://your-host:8080", ws_endpoint="wss://your-other-host:3000")
 ```
 
 ### Debugging
@@ -156,18 +168,6 @@ Or with variables:
 print(client.query.countries.select(["code", "name"]).set_variables({"filter": {"code": {"eq": "CH"}}}).query_string)
 # which prints: query countries ($filter: CountryFilterInput) { countries (filter: $filter) { code name } }
 # the variables are not visible in the query but rather will be send as variables dict to the server.
-```
-
-#### Different Websocket endpoint
-If no websocket endpoint was specified, it gets adapted based on the given request host.
-for example `http://localhost:3000` becomes `ws://localhost:3000`.
-Same goes for secured connections: `https` becomes `wss`.
-But it may be, that you have different endpoints. Therefor you can specify the websocket endpoint
-manually.
-```python
-from qlient import Client
-
-client = Client("http://your-host:8080", ws_endpoint="wss://your-other-host:3000")
 ```
 
 ### Transporter
