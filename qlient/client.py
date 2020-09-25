@@ -1,3 +1,5 @@
+from typing import Optional
+
 from qlient.proxy import MutationServiceProxy, QueryServiceProxy, SubscriptionServiceProxy
 from qlient.schema import Schema
 from qlient.settings import Settings
@@ -32,9 +34,9 @@ class Client:
         self.transporter: Transporter = transporter or Transporter()
         self.settings: Settings = settings or Settings()
 
-        self._query_services = None
-        self._mutation_services = None
-        self._subscription_services = None
+        self._query_services: Optional[QueryServiceProxy] = None
+        self._mutation_services: Optional[MutationServiceProxy] = None
+        self._subscription_services: Optional[SubscriptionServiceProxy] = None
 
         self.schema = Schema(self.endpoint, self.transporter, self.settings)
 
