@@ -1,6 +1,7 @@
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union, Optional
 
 from qlient.builder import SelectedField
+from qlient.cache import Cache
 from qlient.loaders import request_schema
 from qlient.settings import Settings
 from qlient.transport import Transporter
@@ -243,6 +244,9 @@ class SchemaType:
         self.possible_types = raw_type.get("possibleTypes")
 
 
+SCHEMA_KEY = "SCHEMA"
+
+
 class Schema:
     """
     A Schema object contains all graphql types and holds the possible queries and mutations.
@@ -250,7 +254,7 @@ class Schema:
     instead of the transporter itself.
     """
 
-    def __init__(self, endpoint: str, transporter: Transporter, settings: Settings):
+    def __init__(self, endpoint: str, transporter: Transporter, settings: Settings, cache: Optional[Cache]):
         """
         Create a new Schema instance.
 
@@ -261,12 +265,20 @@ class Schema:
         :param endpoint: holds the endpoint url as a string
         :param transporter: holds the transporter instance
         :param settings: holds the settings
+        :param cache: holds an optional caching mechanism
         """
         self.endpoint = endpoint
         self.transport = transporter
         self.settings = settings
+        self.cache = cache
 
-        schema_introspection = self.introspect_schema(endpoint, transporter)
+        if self.cache is not None:
+            schema_introspection = self.cache.retrieve(self.endpoint, SCHEMA_KEY)
+            if schema_introspection is None:
+                schema_introspection = self.introspect_schema(endpoint, transporter)
+                self.cache.store(self.endpoint, SCHEMA_KEY, schema_introspection)
+        else:
+            schema_introspection = self.introspect_schema(endpoint, transporter)
 
         # graphql schema properties
         self.raw_schema = schema_introspection.get(self.settings.default_response_key, {}).get("__schema", {})

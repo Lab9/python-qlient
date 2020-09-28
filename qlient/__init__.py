@@ -4,5 +4,6 @@ from .proxy import QueryServiceProxy, MutationServiceProxy, SubscriptionServiceP
 from .schema import Schema
 from .settings import Settings
 from .transport import Transporter, AsyncTransporter
+from .cache import DiskCache, MemoryCache
 
 __version__ = "1.1.2"

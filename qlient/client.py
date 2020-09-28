@@ -1,5 +1,6 @@
 from typing import Optional
 
+from qlient.cache import Cache
 from qlient.proxy import MutationServiceProxy, QueryServiceProxy, SubscriptionServiceProxy
 from qlient.schema import Schema
 from qlient.settings import Settings
@@ -14,7 +15,7 @@ class Client:
     It is used for requests and holds important variables like endpoint, settings and the schema.
     """
 
-    def __init__(self, endpoint: str, ws_endpoint: str = None, transporter=None, settings=None):
+    def __init__(self, endpoint: str, ws_endpoint: str = None, transporter=None, settings=None, cache=None):
         """
         Instantiate a new Client.
 
@@ -22,6 +23,7 @@ class Client:
         :param ws_endpoint: holds the websocket endpoint URL.
         :param transporter: holds the transporter to use for requests.
         :param settings: holds the settings to apply.
+        :param cache: holds an optional caching mechanism.
         """
         if not endpoint:
             raise ValueError("No Endpoint specified.")
@@ -33,12 +35,13 @@ class Client:
 
         self.transporter: Transporter = transporter or Transporter()
         self.settings: Settings = settings or Settings()
+        self.cache: Optional[Cache] = cache
 
         self._query_services: Optional[QueryServiceProxy] = None
         self._mutation_services: Optional[MutationServiceProxy] = None
         self._subscription_services: Optional[SubscriptionServiceProxy] = None
 
-        self.schema = Schema(self.endpoint, self.transporter, self.settings)
+        self.schema = Schema(self.endpoint, self.transporter, self.settings, self.cache)
 
     @property
     def query(self) -> QueryServiceProxy:

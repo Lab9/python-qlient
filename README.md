@@ -59,6 +59,7 @@ The Documentation covers the following points:
     * [return_requests_response](#return_requests_response)
     * [disable_selection_lookup](#disable_selection_lookup)
     * [return_full_subscription_body](#return_full_subscription_body)
+* [Cache](#cache)
 * [CLI](#cli)
 
 ### Query
@@ -275,6 +276,42 @@ from qlient import Client, Settings
 settings = Settings(return_full_subscription_body=True)
 
 client = Client("https://countries.trevorblades.com/", settings=settings)
+```
+
+### Cache
+The qlient packages comes with two built in caching mechanisms that are optional.
+
+#### MemoryCache
+The memory cache uses a dictionary to store all keys and values.
+```python
+from qlient import Client, MemoryCache
+
+client = Client("https://countries.trevorblades.com/", cache=MemoryCache(ttl=5))  
+# Creates a new client with a in memory cache where each object has a max time-to-live of 5 seconds.
+```
+
+#### DiskCache
+The disk cache writes and reads files to and from the physical disk.
+Even though the disk cache is efficient, i'd recommend only using this for requests where the data doesn't change a lot.
+```python
+from qlient import Client, DiskCache
+
+client = Client("https://countries.trevorblades.com/", cache=DiskCache(ttl=60 * 60 * 24))  
+# Creates a new client with a disk cache where each object has a max time-to-live of 86'400 seconds or a day.
+```
+
+##### Custom DiskCache Location
+The default disk cache location is in the `python-qlient` folder within the system specific tempdir folder.
+
+Windows: `C:\Users\{myUser}\AppData\Local\Temp\python-qlient`
+
+Linux: `/tmp/python-qlient`
+
+However, this can be changed by setting the root variable:
+```python
+from qlient import DiskCache
+
+cache = DiskCache(root=r"path/to/your/desired/root/folder")
 ```
 
 ### CLI

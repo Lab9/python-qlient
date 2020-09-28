@@ -9,6 +9,7 @@ from websockets import connect
 from qlient import helpers
 from qlient.builder import GraphQLBuilder
 from qlient.builder import SelectedField
+from qlient.cache import Cache
 from qlient.logger import logger
 from qlient.schema import Operation
 
@@ -28,6 +29,7 @@ class OperationProxy(ABC):
         :param operation: holds the to be executed operation
         """
         self.client = client
+        self.cache: Optional[Cache] = self.client.cache
         self.operation = operation
         self.fields: Optional[Tuple[SelectedField]] = None
         self.variables = {}
@@ -101,13 +103,26 @@ class OperationProxy(ABC):
         :param kwargs: holds additional key word arguments
         :return: the result depending on settings and transport in use.
         """
-        return self.client.transporter.post(
-            self.client.endpoint,
-            self.query_string,
-            self.variables,
-            self.name,
-            self.operation.settings
-        )
+        if self.cache is not None:
+            cached_value = self.cache.retrieve(self.client.endpoint, self.query_string)
+            if cached_value is None:
+                cached_value = self.client.transporter.post(
+                    self.client.endpoint,
+                    self.query_string,
+                    self.variables,
+                    self.name,
+                    self.operation.settings
+                )
+                self.cache.store(self.client.endpoint, self.query_string, cached_value)
+            return cached_value
+        else:
+            return self.client.transporter.post(
+                self.client.endpoint,
+                self.query_string,
+                self.variables,
+                self.name,
+                self.operation.settings
+            )
 
     def __call__(self, *args, **kwargs):
         """
