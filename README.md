@@ -280,6 +280,7 @@ client = Client("https://countries.trevorblades.com/", settings=settings)
 
 ### Cache
 The qlient packages comes with two built in caching mechanisms that are optional.
+Bear in mind that the cache is *only* used for schema introspection and queries.
 
 #### MemoryCache
 The memory cache uses a dictionary to store all keys and values.

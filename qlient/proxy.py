@@ -103,26 +103,13 @@ class OperationProxy(ABC):
         :param kwargs: holds additional key word arguments
         :return: the result depending on settings and transport in use.
         """
-        if self.cache is not None:
-            cached_value = self.cache.retrieve(self.client.endpoint, self.query_string)
-            if cached_value is None:
-                cached_value = self.client.transporter.post(
-                    self.client.endpoint,
-                    self.query_string,
-                    self.variables,
-                    self.name,
-                    self.operation.settings
-                )
-                self.cache.store(self.client.endpoint, self.query_string, cached_value)
-            return cached_value
-        else:
-            return self.client.transporter.post(
-                self.client.endpoint,
-                self.query_string,
-                self.variables,
-                self.name,
-                self.operation.settings
-            )
+        return self.client.transporter.post(
+            self.client.endpoint,
+            self.query_string,
+            self.variables,
+            self.name,
+            self.operation.settings
+        )
 
     def __call__(self, *args, **kwargs):
         """
@@ -212,6 +199,19 @@ class QueryOperationProxy(OperationProxy):
         Wrapper for set variables method of OperationProxy.
         """
         return self.set_variables(variables)
+
+    def exec(self, *args, **kwargs):
+        """
+        Overridden exec method to enable caching.
+        """
+        if self.cache is not None:
+            cached_value = self.cache.retrieve(self.client.endpoint, self.query_string)
+            if cached_value is None:
+                cached_value = super(QueryOperationProxy, self).exec(*args, **kwargs)
+                self.cache.store(self.client.endpoint, self.query_string, cached_value)
+            return cached_value
+        else:
+            return super(QueryOperationProxy, self).exec(*args, **kwargs)
 
     def __call__(self, select: Tuple[SelectedField] = None, where: Dict = None, *args, **kwargs):
         """
