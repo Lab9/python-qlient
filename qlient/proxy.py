@@ -329,8 +329,13 @@ class SubscriptionOperationProxy(OperationProxy):
     def __init__(self, client, operation):
         super(SubscriptionOperationProxy, self).__init__(client, operation)
         self.client = client
+        self.handler: Optional[Callable] = None
 
-    async def __call__(self, select: Tuple[SelectedField] = None, handle: Callable = None, *args, **kwargs):
+    def set_handler(self, handler: Callable = None) -> "SubscriptionOperationProxy":
+        self.handler = handler
+        return self
+
+    async def exec(self, *args, **kwargs):
         """
         The heart piece of a subscription.
 
@@ -343,13 +348,9 @@ class SubscriptionOperationProxy(OperationProxy):
         with the predefined connection_init_message.
         Then we send our request and handle the incoming messages.
 
-        :param select: holds the field selection.
-        :param handle: holds a callable that will we called with every incoming message of type "data"
         :param args: holds additional arguments
         :param kwargs: holds additional keyword arguments.
         """
-        self.select(select)
-
         if self.client.ws_endpoint is None:
             raise ValueError("ws_endpoint is None. Please set the value manually in the client.")
 
@@ -372,12 +373,23 @@ class SubscriptionOperationProxy(OperationProxy):
                     logger.info("The websocket server acknowledged the connection.")
                 elif response_type == "data":
                     if self.client.settings.return_full_subscription_body:
-                        handle(response_body)
+                        self.handler(response_body)
                     else:
                         response_payload = response_body[self.client.settings.default_payload_key]
-                        handle(response_payload[self.client.settings.default_response_key][self.name])
+                        self.handler(response_payload[self.client.settings.default_response_key][self.name])
                 else:
                     logger.warning(f"Unknown response type: '{response_type}'")
+
+    async def __call__(self, select: Tuple[SelectedField] = None, handle: Callable = None, *args, **kwargs):
+        """
+        Wrapper for exec function.
+
+        :param select: holds the field selection.
+        :param handle: holds a callable that will we called with every incoming message of type "data"
+        """
+        self.select(select)
+        self.set_handler(handle)
+        await self.exec(*args, **kwargs)
 
 
 class SubscriptionServiceProxy(ServiceProxy):
