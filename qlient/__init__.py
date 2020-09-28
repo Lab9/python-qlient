@@ -6,4 +6,4 @@ from .settings import Settings
 from .transport import Transporter, AsyncTransporter
 from .cache import DiskCache, MemoryCache
 
-__version__ = "1.2.0"
+__version__ = "1.2.1"

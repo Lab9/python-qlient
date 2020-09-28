@@ -11,7 +11,7 @@ readme = (root_directory / "README.md").read_text(encoding="UTF-8")
 # This call to setup() does all the work
 setup(
     name="python-qlient",
-    version="1.2.0",
+    version="1.2.1",
     description="A fast and modern graphql client library designed with simplicity in mind.",
     long_description=readme,
     long_description_content_type="text/markdown",
