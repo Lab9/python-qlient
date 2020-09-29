@@ -46,11 +46,24 @@ def find_defer_name_recursively(defer: TypeDefer) -> Union[str, None]:
 def adapt_arguments(args: Dict[str, Argument]) -> Dict[str, OperationArgument]:
     result = {}
     for name, arg in args.items():
-        type_name = find_defer_name_recursively(arg.type)
+        type_name = adapt_argument_type_name_recursively(arg.type, "")
         required = arg.type.is_non_null()
         op_arg = OperationArgument(name, type_name, required)
         result[name] = op_arg
     return result
+
+
+def adapt_argument_type_name_recursively(defer: TypeDefer, type_name_so_far: str) -> str:
+    if defer is None:
+        return type_name_so_far
+    elif defer.is_non_null():
+        type_name_so_far = adapt_argument_type_name_recursively(defer.of_type, type_name_so_far)
+        return f"{type_name_so_far}!"
+    elif defer.is_list():
+        type_name_so_far = adapt_argument_type_name_recursively(defer.of_type, type_name_so_far)
+        return f"[{type_name_so_far}]"
+    else:
+        return defer.name
 
 
 def adapt_return_fields(

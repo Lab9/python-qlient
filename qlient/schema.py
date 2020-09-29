@@ -21,18 +21,8 @@ class OperationArgument:
         :param is_required: true if the argument must not be null
         """
         self.key = name
-        self._value = arg_type_name
+        self.value = arg_type_name
         self.required = is_required
-
-    @property
-    def value(self) -> str:
-        """
-        :return: a concatenated string of the type and an exclamation mark if it is required.o
-        """
-        return_value = self._value
-        if self.required:
-            return_value += "!"
-        return return_value
 
 
 class Operation:
